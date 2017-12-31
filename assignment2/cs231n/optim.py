@@ -66,6 +66,9 @@ def sgd_momentum(w, dw, config=None):
     # the next_w variable. You should also use and update the velocity v.     #
     ###########################################################################
     pass
+    #SGD_m equation from wikipedia
+    v = config['momentum'] * v - config['learning_rate']* dw
+    next_w = w + v
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -100,6 +103,9 @@ def rmsprop(x, dx, config=None):
     # config['cache'].                                                        #
     ###########################################################################
     pass
+    #this equation comes from the slides lecture7
+    config["cache"] = config["decay_rate"] * config["cache"] + (1- config["decay_rate"])* dx *dx
+    next_x  = x - config["learning_rate"] * dx/ (np.sqrt(config["cache"])+config["epsilon"])
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -137,6 +143,29 @@ def adam(x, dx, config=None):
     # stored in config.                                                       #
     ###########################################################################
     pass
+    # be careful to this t, only has usage in the unbias step, so here add it to skip one
+    t = config["t"] + 1 # iteration number 
+    lr = config["learning_rate"]
+    beta1 = config["beta1"]
+    beta2 = config["beta2"]
+    m = config["m"]
+    v = config["v"]
+    eps = config["epsilon"]
+
+    m = beta1*m + (1 - beta1) * dx
+    v = beta2*v + (1 - beta2) * dx * dx
+
+    config["m"] = m
+    config["v"] = v
+
+    #unbias step
+    m_ = m/(1 - beta1 ** t )
+    v_ = v/(1 - beta2 ** t )
+
+    next_x = x - lr * m_/(np.sqrt(v_) + eps)
+
+    #update the variables in the cache
+    config["t"] = t   
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################

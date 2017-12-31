@@ -183,6 +183,17 @@ class FullyConnectedNet(object):
         # parameters should be initialized to zero.                                #
         ############################################################################
         pass
+        prev_dim = input_dim
+        hidden_dims.append(num_classes)
+        for layer_idx in range(self.num_layers):
+            curr_dim = hidden_dims[layer_idx ]
+            shape = (prev_dim, curr_dim)
+            self.params[ "W" + str(layer_idx+1)] = weight_scale*np.random.randn(prev_dim, curr_dim)
+            self.params[ "b" + str(layer_idx+1)] = np.zeros(curr_dim)
+            if use_batchnorm:
+                self.params[ "gamma" + str(layer_idx+1)] = np.ones(curr_dim)
+                self.params[ "beta"  + str(layer_idx+1)] = np.zeros(curr_dim)
+            prev_dim = curr_dim
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -241,6 +252,21 @@ class FullyConnectedNet(object):
         # layer, etc.                                                              #
         ############################################################################
         pass
+        caches = {}
+        prev_input = X
+        for layer_idx in range(self.num_layers - 1 ):
+            #affine
+            prev_input, caches["W" + str(layer_idx+1)] = affine_forward(prev_input, self.params["W" + str(layer_idx+1)],self.params["b" + str(layer_idx+1)])
+
+            #relu 
+            prev_input, caches["re" + str(layer_idx+1)] = relu_forward(prev_input)
+
+
+        #last affine before softmax
+        scores, caches["W" + str(self.num_layers)] = affine_forward(prev_input, self.params["W" + str(self.num_layers)],self.params["b" + str(self.num_layers)])
+
+
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -264,6 +290,29 @@ class FullyConnectedNet(object):
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
         pass
+        loss, dsoft  = softmax_loss(scores, y)
+        temp_sum = 0.0
+
+        #add all the reg term on loss 
+        for layer_idx in range(self.num_layers):
+            this_layer_W = self.params["W" + str(layer_idx+1)]
+            temp_sum += np.sum(this_layer_W*this_layer_W)
+        loss += 0.5*self.reg*temp_sum
+
+        #compute the grads
+        #the one affine layer before the softmax
+        dupstream, grads["W" + str(self.num_layers)], grads["b" + str(self.num_layers)] = affine_backward(dsoft,caches["W" + str(self.num_layers)])
+        grads["W" + str(self.num_layers)] += self.reg*caches["W" + str(self.num_layers)][1]
+
+        for layer_idx in range(self.num_layers-1, 0, -1):
+
+            #relu backward
+            dupstream = relu_backward(dupstream, caches["re" + str(layer_idx)])
+
+            #affine backward
+            dupstream, grads["W" + str(layer_idx)], grads["b" + str(layer_idx)] = affine_backward(dupstream,caches["W" + str(layer_idx)])
+            #dont forget the reg term for the "dW"
+            grads["W" + str(layer_idx)] += self.reg*caches["W" + str(layer_idx)][1]
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
