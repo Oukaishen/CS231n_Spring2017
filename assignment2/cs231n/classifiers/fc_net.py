@@ -184,16 +184,21 @@ class FullyConnectedNet(object):
         ############################################################################
         pass
         prev_dim = input_dim
-        hidden_dims.append(num_classes)
-        for layer_idx in range(self.num_layers):
+        #this line of code is very easy to make me fuck and i comment is to remind myself never easy to change the input
+        # hidden_dims.append(num_classes)
+        for layer_idx in range(self.num_layers - 1):
             curr_dim = hidden_dims[layer_idx ]
             shape = (prev_dim, curr_dim)
             self.params[ "W" + str(layer_idx+1)] = weight_scale*np.random.randn(prev_dim, curr_dim)
             self.params[ "b" + str(layer_idx+1)] = np.zeros(curr_dim)
-            if use_batchnorm:
-                self.params[ "gamma" + str(layer_idx+1)] = np.ones(curr_dim)
-                self.params[ "beta"  + str(layer_idx+1)] = np.zeros(curr_dim)
+            if self.use_batchnorm:
+                    self.params[ "gamma" + str(layer_idx+1)] = np.ones(curr_dim)
+                    self.params[ "beta"  + str(layer_idx+1)] = np.zeros(curr_dim)
             prev_dim = curr_dim
+        
+        #initialize the last layer W, b 
+        self.params[ "W" + str(self.num_layers)] = weight_scale*np.random.randn(prev_dim, num_classes)
+        self.params[ "b" + str(self.num_layers)] = np.zeros(num_classes)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -258,9 +263,16 @@ class FullyConnectedNet(object):
             #affine
             prev_input, caches["W" + str(layer_idx+1)] = affine_forward(prev_input, self.params["W" + str(layer_idx+1)],self.params["b" + str(layer_idx+1)])
 
+            #if the Batch-Normalization is turn on, then we will consider the extra BN-layer
+            if self.use_batchnorm:
+                prev_input, caches["BN" + str(layer_idx+1)] = batchnorm_forward(prev_input, self.params["gamma" + str(layer_idx + 1)], self.params["beta" + str(layer_idx + 1)], self.bn_params[layer_idx])
+
             #relu 
             prev_input, caches["re" + str(layer_idx+1)] = relu_forward(prev_input)
 
+            #dropout
+            if self.use_dropout:
+                prev_input, caches["DO" + str(layer_idx + 1)] = dropout_forward(prev_input, self.dropout_param)
 
         #last affine before softmax
         scores, caches["W" + str(self.num_layers)] = affine_forward(prev_input, self.params["W" + str(self.num_layers)],self.params["b" + str(self.num_layers)])
@@ -306,8 +318,16 @@ class FullyConnectedNet(object):
 
         for layer_idx in range(self.num_layers-1, 0, -1):
 
+            #add the backward of Dropout Layer
+            if self.use_dropout:
+                dupstream = dropout_backward(dupstream, caches["DO" + str(layer_idx)])
+            
             #relu backward
             dupstream = relu_backward(dupstream, caches["re" + str(layer_idx)])
+
+            #add the backward of BatchNormalization
+            if self.use_batchnorm:
+                dupstream, grads["gamma" + str(layer_idx)], grads["beta" + str(layer_idx)] = batchnorm_backward(dupstream, caches["BN" + str(layer_idx)])
 
             #affine backward
             dupstream, grads["W" + str(layer_idx)], grads["b" + str(layer_idx)] = affine_backward(dupstream,caches["W" + str(layer_idx)])
