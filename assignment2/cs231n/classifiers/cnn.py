@@ -49,6 +49,32 @@ class ThreeLayerConvNet(object):
         # of the output affine layer.                                              #
         ############################################################################
         pass
+        # prepare the variables that i need
+        C, H, W = input_dim
+        # W1 shape = (F, C, HH, WW)
+        W1_shape = (num_filters, C, filter_size, filter_size)
+        b1_shape = (num_filters)
+        # conv means : H ->  (H after conv)  -> (H after pool) = HH
+        # see below in the loss part to find the stride of 1 and the pad of (filter_size - 1)//2
+        H_after_conv = H   #H - filter_size + ( (filter_size - 1 ) // 2 ) * 2 
+        W_after_conv = W
+        # 2 x 2 max-pool layer
+        pool_size =  2 
+        pool_stride = 2 # find below in the loss part
+        HH = (H_after_conv - pool_size) // pool_stride + 1
+        WW = (W_after_conv - pool_size) // pool_stride + 1
+        D = num_filters * HH * WW
+        W2_shape = (D, hidden_dim)
+        b2_shape = (hidden_dim)
+        W3_shape = (hidden_dim, num_classes)
+        b3_shape = (num_classes)
+        # do the initialization
+        self.params["W1"] = weight_scale * np.random.randn(*W1_shape)
+        self.params["b1"] = np.zeros(b1_shape)
+        self.params["W2"] = weight_scale * np.random.randn(*W2_shape)
+        self.params["b2"] = np.zeros(b2_shape)
+        self.params["W3"] = weight_scale * np.random.randn(*W3_shape)
+        self.params["b3"] = np.zeros(b3_shape)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -81,6 +107,10 @@ class ThreeLayerConvNet(object):
         # variable.                                                                #
         ############################################################################
         pass
+        out1, cache1 = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
+        out2, cache2 = affine_relu_forward(out1, W2, b2)
+        scores, cache3 = affine_forward(out2,W3,b3)
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -96,6 +126,17 @@ class ThreeLayerConvNet(object):
         # for self.params[k]. Don't forget to add L2 regularization!               #
         ############################################################################
         pass
+        loss, dupstream = softmax_loss(scores, y)
+        loss += 0.5*self.reg * (np.sum(W1*W1) + np.sum(W2*W2) + np.sum(W3*W3) ) 
+
+        #grads
+        dupstream, grads["W3"], grads["b3"] = affine_backward(dupstream, cache3)
+        dupstream, grads["W2"], grads["b2"] = affine_relu_backward(dupstream, cache2)
+        dupstream, grads["W1"], grads["b1"] = conv_relu_pool_backward(dupstream,cache1)
+
+        grads["W1"] += self.reg * self.params["W1"]
+        grads["W2"] += self.reg * self.params["W2"]
+        grads["W3"] += self.reg * self.params["W3"]
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
