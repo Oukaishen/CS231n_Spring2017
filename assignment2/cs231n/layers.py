@@ -328,7 +328,8 @@ def dropout_forward(x, dropout_param):
         #######################################################################
         pass
         # here the star operator is to unpack the sequence/collection into positional arguments
-        mask = np.random.rand(*x.shape) > p
+        # here i find the the previous implemenation seems forget to rescale. need to modify
+        mask = (np.random.rand(*x.shape) > p) / (1-p)
         out  = x * mask
 
         #######################################################################
