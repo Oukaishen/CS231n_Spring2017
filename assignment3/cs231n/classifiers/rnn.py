@@ -138,6 +138,34 @@ class CaptioningRNN(object):
         # gradients for self.params[k].                                            #
         ############################################################################
         pass
+        # Forward pass
+        # (1) Convert the input features to initial hidden state
+        initial_hidden_state, initial_hidden_cache = affine_forward(features, W_proj, b_proj)
+        
+        # (2) Word Embed the captions_in 
+        embedded_captions, embedded_cache  = word_embedding_forward(captions_in, W_embed)
+        
+        # (3) use vanilla RNN
+        if self.cell_type == "rnn":
+            hidden_states, hidden_cache = rnn_forward(embedded_captions, initial_hidden_state, Wx, Wh, b)
+        
+        # (4) temporal_affine_forward
+        scores, affine_cache = temporal_affine_forward(hidden_states,W_vocab, b_vocab)
+
+        # (5) temporal_softmax_loss
+        loss, dupstream = temporal_softmax_loss(scores, captions_out, mask)
+
+
+        #Backward pass
+        dhidden_states, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dupstream, affine_cache)
+
+        dembbeded_captions, dinitial_hid, grads["Wx"], grads["Wh"], grads["b"] = rnn_backward(dhidden_states, hidden_cache)
+
+        grads["W_embed"] = word_embedding_backward(dembbeded_captions, embedded_cache)
+
+        _, grads["W_proj"], grads["b_proj"] = affine_backward(dinitial_hid, initial_hidden_cache)
+
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -200,6 +228,26 @@ class CaptioningRNN(object):
         # a loop.                                                                 #
         ###########################################################################
         pass
+        # calculate the initial hidden states, h0
+        prev_h, _ = affine_forward(features, W_proj, b_proj)
+        prev_word = np.zeros(N,dtype=np.int32)
+        prev_word[:] = self._start
+
+        for timestep in range(max_length):
+            # (1) embbed the previous word using embbeddings.
+            curr_x = W_embed[prev_word]
+
+            # (2) RNN step
+            next_h, _ = rnn_step_forward(curr_x, prev_h, Wx, Wh, b)
+
+            # (3) temporal affine
+            scores = next_h.dot(W_vocab) + b_vocab
+
+            # (4) select the next word as prev_word
+            prev_word = np.argmax(scores, axis = 1)
+            captions[:,timestep] = prev_word
+            prev_h = next_h
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################

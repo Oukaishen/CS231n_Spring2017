@@ -187,6 +187,11 @@ def word_embedding_forward(x, W):
     #                                                                            #
     # HINT: This can be done in one line using NumPy's array indexing.           #
     ##############################################################################
+    N, T = x.shape
+    V, D = W.shape
+    out = W[x,:]
+    # out = W[x]
+    cache = (x, W)
     pass
     ##############################################################################
     #                               END OF YOUR CODE                             #
@@ -217,6 +222,13 @@ def word_embedding_backward(dout, cache):
     # HINT: Look up the function np.add.at                                       #
     ##############################################################################
     pass
+    x, W = cache
+    V, D = W.shape
+    dW = np.zeros([V,D])
+    # need to come back when figure out the word embedding!!
+    # this line of code is difficult 
+    # can see the answer i worte here https://stackoverflow.com/questions/45473896/np-add-at-indexing-with-array
+    np.add.at(dW, x, dout)
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -451,7 +463,7 @@ def temporal_softmax_loss(x, y, mask, verbose=False):
     dx_flat = probs.copy()
     dx_flat[np.arange(N * T), y_flat] -= 1
     dx_flat /= N
-    dx_flat *= mask_flat[:, None]
+    dx_flat *= mask_flat[:, None] # here None is alias of numpy.newaxis
 
     if verbose: print('dx_flat: ', dx_flat.shape)
 
