@@ -148,6 +148,8 @@ class CaptioningRNN(object):
         # (3) use vanilla RNN
         if self.cell_type == "rnn":
             hidden_states, hidden_cache = rnn_forward(embedded_captions, initial_hidden_state, Wx, Wh, b)
+        elif self.cell_type == 'lstm':
+            hidden_states, hidden_cache = lstm_forward(embedded_captions, initial_hidden_state, Wx, Wh, b)
         
         # (4) temporal_affine_forward
         scores, affine_cache = temporal_affine_forward(hidden_states,W_vocab, b_vocab)
@@ -159,7 +161,10 @@ class CaptioningRNN(object):
         #Backward pass
         dhidden_states, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dupstream, affine_cache)
 
-        dembbeded_captions, dinitial_hid, grads["Wx"], grads["Wh"], grads["b"] = rnn_backward(dhidden_states, hidden_cache)
+        if self.cell_type == 'rnn':
+            dembbeded_captions, dinitial_hid, grads["Wx"], grads["Wh"], grads["b"] = rnn_backward(dhidden_states, hidden_cache)
+        elif self.cell_type == 'lstm':
+            dembbeded_captions, dinitial_hid, grads["Wx"], grads["Wh"], grads["b"] = lstm_backward(dhidden_states, hidden_cache)
 
         grads["W_embed"] = word_embedding_backward(dembbeded_captions, embedded_cache)
 
@@ -232,13 +237,18 @@ class CaptioningRNN(object):
         prev_h, _ = affine_forward(features, W_proj, b_proj)
         prev_word = np.zeros(N,dtype=np.int32)
         prev_word[:] = self._start
+        H, _ = W_vocab.shape
+        prev_c = np.zeros([N,H])
 
         for timestep in range(max_length):
             # (1) embbed the previous word using embbeddings.
             curr_x = W_embed[prev_word]
 
             # (2) RNN step
-            next_h, _ = rnn_step_forward(curr_x, prev_h, Wx, Wh, b)
+            if self.cell_type == 'rnn':
+                next_h, _ = rnn_step_forward(curr_x, prev_h, Wx, Wh, b)
+            elif self.cell_type == 'lstm':
+                next_h, prev_c, _ = lstm_step_forward(curr_x, prev_h, prev_c, Wx, Wh, b)
 
             # (3) temporal affine
             scores = next_h.dot(W_vocab) + b_vocab
