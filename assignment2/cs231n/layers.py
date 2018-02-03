@@ -420,7 +420,7 @@ def conv_forward_naive(x, w, b, conv_param):
         x_pad =  np.pad (x[data_idx,:,:,:], ((0,0),(pad,pad),(pad,pad)), "constant", constant_values = 0)
     #this loop is for F filter depth
         for filter_idx in range(F):
-            w_filter = w[filter_idx,:,:]
+            w_filter = w[filter_idx,:,:,:]
             b_filter = b[filter_idx]
              #Here loop the pic of C channel  
             for rdx in range(Hnew):
